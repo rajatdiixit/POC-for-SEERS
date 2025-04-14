@@ -13,6 +13,8 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
   const [error, setError] = useState(null);
   const [isLoadingOutcomes, setIsLoadingOutcomes] = useState(false);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   // Debounce function for API calls
   const debounce = (func, delay) => {
@@ -27,25 +29,23 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
   const fetchLearningOutcomes = useCallback(
     debounce(async (prompt, grade) => {
       if (!prompt || !grade) return;
-      console.log('Fetching learning outcomes for:', prompt, grade);
       setIsLoadingOutcomes(true);
+      setError(null);
       try {
         const response = await getLearningOutcomes(prompt, grade);
-        console.log('Learning Outcomes Response:', response);
         if (response.learning_outcomes && Array.isArray(response.learning_outcomes)) {
           setLearningOutcomes(response.learning_outcomes.map(lo => ({ id: Date.now() + Math.random(), name: lo, selected: false })));
         } else {
-          console.warn('Invalid learning outcomes response:', response);
           setLearningOutcomes([]);
-          setError('Invalid learning outcomes data received from API.');
+          setError('Invalid learning outcomes data received.');
         }
       } catch (err) {
         console.error('Learning Outcomes Error:', err.response ? err.response.data : err.message);
-        setError('Failed to load learning outcomes. Check console for details.');
+        setError('Failed to load learning outcomes.');
       } finally {
         setIsLoadingOutcomes(false);
       }
-    }, 3000),
+    }, 2000),
     []
   );
 
@@ -53,25 +53,23 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
   const fetchDisambiguationTags = useCallback(
     debounce(async (prompt, grade) => {
       if (!prompt || !grade) return;
-      console.log('Fetching disambiguation tags for:', prompt, grade);
       setIsLoadingTags(true);
+      setError(null);
       try {
         const response = await getDisambiguationTags(prompt, grade);
-        console.log('Disambiguation Tags Response:', response);
         if (response.disambiguation_tags && Array.isArray(response.disambiguation_tags)) {
           setDisambiguationTags(response.disambiguation_tags.map(dt => ({ id: Date.now() + Math.random(), name: dt, selected: false })));
         } else {
-          console.warn('Invalid disambiguation tags response:', response);
           setDisambiguationTags([]);
-          setError('Invalid disambiguation tags data received from API.');
+          setError('Invalid disambiguation tags data received.');
         }
       } catch (err) {
         console.error('Disambiguation Tags Error:', err.response ? err.response.data : err.message);
-        setError('Failed to load disambiguation tags. Check console for details.');
+        setError('Failed to load disambiguation tags.');
       } finally {
         setIsLoadingTags(false);
       }
-    }, 3000),
+    }, 2000),
     []
   );
 
@@ -97,34 +95,60 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
     }
   }, [gradeLevel, topic, fetchLearningOutcomes, fetchDisambiguationTags]);
 
-  const toggleLearningOutcome = (outcome) => {
+  const toggleLearningOutcome = useCallback((outcome) => {
     setSelectedLearningOutcomes(prev =>
       prev.includes(outcome)
         ? prev.filter(o => o !== outcome)
         : [...prev, outcome]
     );
-  };
+  }, []);
 
-  const toggleDisambiguationTag = (tag) => {
+  const toggleDisambiguationTag = useCallback((tag) => {
     setSelectedDisambiguationTags(prev =>
       prev.includes(tag)
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
-  };
+  }, []);
 
   const clearLearningOutcomes = () => setSelectedLearningOutcomes([]);
   const clearDisambiguationTags = () => setSelectedDisambiguationTags([]);
 
+  const handleAddTag = () => {
+    setIsAddingTag(true);
+    setNewTag('');
+  };
+
+  const handleTagInput = (e) => {
+    setNewTag(e.target.value);
+  };
+
+  const handleTagSubmit = (e) => {
+    if (e.key === 'Enter' && newTag.trim()) {
+      const newTagObj = {
+        id: Date.now() + Math.random(),
+        name: newTag.trim(),
+        selected: true
+      };
+      setDisambiguationTags(prev => [...prev, newTagObj]);
+      setSelectedDisambiguationTags(prev => [...prev, newTagObj.name]);
+      setIsAddingTag(false);
+      setNewTag('');
+    }
+  };
+
   const generateLessonPlan = async () => {
+    if (!topic || !gradeLevel) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+    setError(null);
     try {
       const plan = await getLessonPlan(topic, gradeLevel, selectedLearningOutcomes, selectedDisambiguationTags);
-      console.log('Lesson Plan:', plan);
       setLessonPlan(plan.lesson_plan);
-      onClose(); // Close dialog after generating
     } catch (err) {
       console.error('Generate Error:', err.response ? err.response.data : err.message);
-      setError('Failed to generate lesson plan. Check console for details.');
+      setError('Failed to generate lesson plan.');
     }
   };
 
@@ -132,20 +156,26 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black opacity-50" onClick={(e) => {
-        e.stopPropagation(); // Prevent close on overlay click if needed, but keep for intentional close
-        onClose();
-      }} style={{ zIndex: 9999 }} />
-      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 10000 }}>
+      <div className="fixed inset-0 bg-black opacity-50" style={{ zIndex: 9999 }} />
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        role="dialog"
+        aria-labelledby="lesson-plan-title"
+        aria-modal="true"
+        style={{ zIndex: 10000 }}
+      >
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4" style={{ minHeight: '500px' }}>
           <div className="p-6 pb-2">
             <div className="flex items-center">
               <div className="text-[#0A58FF] text-2xl mr-3">✱</div>
-              <h2 className="text-[28px] font-semibold text-[#020105]">Create Lesson Plan</h2>
-              <button onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }} className="ml-auto p-2 rounded-full hover:bg-[#F0F0F4] text-[#585D69]">
+              <h2 id="lesson-plan-title" className="text-[28px] font-semibold text-[#020105]">
+                Create Lesson Plan
+              </h2>
+              <button
+                onClick={onClose}
+                className="ml-auto p-2 rounded-full hover:bg-[#F0F0F4] text-[#585D69]"
+                aria-label="Close dialog"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -195,13 +225,41 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
                   <label className="block text-[#585D69] text-lg">
                     Suggestions <span className="text-red-500">*</span>
                   </label>
-                  <button onClick={clearLearningOutcomes} className="text-[#585D69] text-sm hover:text-[#020105]">
+                  <button
+                    onClick={clearLearningOutcomes}
+                    className="text-[#585D69] text-sm hover:text-[#020105]"
+                    aria-label="Clear all learning outcomes"
+                  >
                     Clear all
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {isLoadingOutcomes ? (
-                    <p className="text-[#585D69]">Loading learning outcomes...</p>
+                    <div className="flex items-center space-x-2 bg-[#F5F5FA] px-4 py-2 rounded-full">
+                      <svg
+                        className="animate-spin"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="#0A58FF"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="#0A58FF"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span className="text-[#585D69] text-sm font-roboto">Loading...</span>
+                    </div>
                   ) : learningOutcomes.length > 0 ? (
                     learningOutcomes.map((outcome) => (
                       <button
@@ -221,68 +279,134 @@ const LessonPlanDialog = ({ isOpen, onClose }) => {
                       </button>
                     ))
                   ) : (
-                    <p className="text-[#585D69]"></p>
+                    <p className="text-[#585D69] text-sm">No learning outcomes available.</p>
                   )}
                 </div>
               </div>
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-[#585D69] text-lg">
-                    What's this about ? <span className="text-red-500">*</span>
+                    What's this about? <span className="text-red-500">*</span>
                   </label>
-                  <button onClick={clearDisambiguationTags} className="text-[#585D69] text-sm hover:text-[#020105]">
+                  <button
+                    onClick={clearDisambiguationTags}
+                    className="text-[#585D69] text-sm hover:text-[#020105]"
+                    aria-label="Clear all disambiguation tags"
+                  >
                     Clear all
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {isLoadingTags ? (
-                    <p className="text-[#585D69]">Loading disambiguation tags...</p>
-                  ) : disambiguationTags.length > 0 ? (
-                    disambiguationTags.map((tag) => (
-                      <button
-                        key={tag.id}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleDisambiguationTag(tag.name);
-                        }}
-                        className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                          selectedDisambiguationTags.includes(tag.name)
-                            ? 'bg-[#0A58FF] text-white border border-[#0A58FF]'
-                            : 'bg-[#EEEEEE] text-[#585D69] border border-transparent'
-                        }`}
+                    <div className="flex items-center space-x-2 bg-[#F5F5FA] px-4 py-2 rounded-full">
+                      <svg
+                        className="animate-spin"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        {tag.name}
-                      </button>
-                    ))
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="#0A58FF"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="#0A58FF"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span className="text-[#585D69] text-sm font-roboto">Loading...</span>
+                    </div>
+                  ) : disambiguationTags.length > 0 || isAddingTag ? (
+                    <>
+                      {disambiguationTags.map((tag, index) => (
+                        <React.Fragment key={tag.id}>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleDisambiguationTag(tag.name);
+                            }}
+                            className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                              selectedDisambiguationTags.includes(tag.name)
+                                ? 'bg-[#0A58FF] text-white border border-[#0A58FF]'
+                                : 'bg-[#EEEEEE] text-[#585D69] border border-transparent'
+                            }`}
+                          >
+                            {tag.name}
+                          </button>
+                          {index === disambiguationTags.length - 1 && !isAddingTag && (
+                            <button
+                              onClick={handleAddTag}
+                              className="px-2 py-2 rounded-full bg-gray-200 text-[#585D69] hover:bg-gray-300"
+                              aria-label="Add new disambiguation tag"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          )}
+                        </React.Fragment>
+                      ))}
+                      {isAddingTag && (
+                        <input
+                          type="text"
+                          value={newTag}
+                          onChange={handleTagInput}
+                          onKeyDown={handleTagSubmit}
+                          placeholder="Enter new tag"
+                          className="px-4 py-2 border border-[#D2D2D2] rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#0A58FF]"
+                          autoFocus
+                        />
+                      )}
+                    </>
                   ) : (
-                    <p className="text-[#585D69]"></p>
+                    <p className="text-[#585D69] text-sm">No disambiguation tags available.</p>
                   )}
                 </div>
               </div>
               <div className="flex justify-end mt-8">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    generateLessonPlan();
-                  }}
-                  className="flex items-center gap-2 bg-[#0A58FF] hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors"
+                  onClick={generateLessonPlan}
+                  disabled={!topic || !gradeLevel}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
+                    !topic || !gradeLevel
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-[#0A58FF] hover:bg-blue-600 text-white'
+                  }`}
                 >
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M7 4H4V7H7V4Z" fill="white"/>
-                    <path d="M7 9H4V12H7V9Z" fill="white"/>
-                    <path d="M4 14H7V17H4V14Z" fill="white"/>
-                    <path d="M9 4H12V7H9V4Z" fill="white"/>
-                    <path d="M12 9H9V12H12V9Z" fill="white"/>
-                    <path d="M9 14H12V17H9V14Z" fill="white"/>
-                    <path d="M14 4H17V7H14V4Z" fill="white"/>
-                    <path d="M17 9H14V12H17V9Z" fill="white"/>
-                    <path d="M14 14H17V17H14V14Z" fill="white"/>
+                    <path d="M7 4H4V7H7V4Z" fill="currentColor"/>
+                    <path d="M7 9H4V12H7V9Z" fill="currentColor"/>
+                    <path d="M4 14H7V17H4V14Z" fill="currentColor"/>
+                    <path d="M9 4H12V7H9V4Z" fill="currentColor"/>
+                    <path d="M12 9H9V12H12V9Z" fill="currentColor"/>
+                    <path d="M9 14H12V17H9V14Z" fill="currentColor"/>
+                    <path d="M14 4H17V7H14V4Z" fill="currentColor"/>
+                    <path d="M17 9H14V12H17V9Z" fill="currentColor"/>
+                    <path d="M14 14H17V17H14V14Z" fill="currentColor"/>
                   </svg>
                   <span className="font-medium">Generate</span>
                 </button>
               </div>
-              {lessonPlan && <div className="p-4 mt-4 bg-gray-100 rounded">{lessonPlan}</div>}
+              {lessonPlan && (
+                <div className="p-4 mt-4 bg-gray-100 rounded">
+                  <div>{lessonPlan}</div>
+                  <button
+                    onClick={() => {
+                      setLessonPlan('');
+                      onClose();
+                    }}
+                    className="mt-2 px-4 py-2 bg-[#585D69] text-white rounded-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
               {error && <div className="p-4 mt-4 text-red-500">{error}</div>}
             </form>
           </div>
