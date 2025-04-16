@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Paperclip, Mic, Plus, ArrowLeft } from 'lucide-react';
+import { X, Paperclip, Mic, Plus, ArrowLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getLearningOutcomes, getDisambiguationTags } from '../services/api';
 
 const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [selectedTool, setSelectedTool] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [topic, setTopic] = useState('');
   const [gradeLevel, setGradeLevel] = useState('High School');
   const [notes, setNotes] = useState('');
@@ -23,11 +24,18 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
   const [uploadedDocument, setUploadedDocument] = useState(null);
 
   const tools = [
-    { id: 'lesson-plan', name: 'Lesson Plan' },
-    { id: 'lesson-builder', name: 'Lesson Builder' },
-    { id: 'workbook-generator', name: 'Workbook Generator' },
-    { id: 'blooms-taxonomy', name: "Bloom's Taxonomy Generator" },
+    'Lesson Plan',
+    'Lesson Builder',
+    'Workbook Generator',
+    "Bloom's Taxonomy Generator",
   ];
+
+  const toolIds = {
+    'Lesson Plan': 'lesson-plan',
+    'Lesson Builder': 'lesson-builder',
+    'Workbook Generator': 'workbook-generator',
+    "Bloom's Taxonomy Generator": 'blooms-taxonomy',
+  };
 
   const toolTitles = {
     'lesson-plan': 'Create Lesson Plan',
@@ -220,7 +228,7 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
   const resetSelection = () => {
     setSelectedTool(null);
     setTopic('');
-    setGradeLevel('High School');
+    setGradeLevel('');
     setNotes('');
     setLearningOutcomes([]);
     setDisambiguationTags([]);
@@ -231,6 +239,10 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
   };
 
   if (!isOpen) return null;
+
+  const filteredTools = tools.filter(tool =>
+    tool.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <>
@@ -256,7 +268,7 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
               )}
               <div className="text-[#0A58FF] text-2xl mr-3">✱</div>
               <h2 id="lesson-plan-title" className="text-[28px] font-roboto font-semibold text-[#020105]">
-                {selectedTool ? toolTitles[selectedTool] : 'Oh ! You are creating a Document'}
+                {selectedTool ? toolTitles[selectedTool] : "Let's create a document from the list"}
               </h2>
               <button
                 onClick={onClose}
@@ -267,32 +279,46 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
               </button>
             </div>
           </div>
-          <div className="p-6 pt-4 mt-20"> 
+          <div className="p-6 pt-4">
             {!selectedTool ? (
-              <div className="grid grid-cols-2 gap-4 ">
-                {tools.map(tool => (
-                  <button
-                    key={tool.id}
-                    onClick={() => setSelectedTool(tool.id)}
-                    className="bg-[#FFFFFF] border border-[#D2D2D2] rounded-lg p-6 text-center hover:border-[#0A58FF] hover:shadow-md transition-all"
-                  >
-                    <span className="text-[14px] font-roboto font-semibold text-[#020105]">{tool.name}</span>
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search tools..."
+                      className="w-full px-4 py-2 border border-[#D2D2D2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58FF] focus:border-transparent font-roboto text-[14px]"
+                    />
+                    <Search className="absolute right-3 top-2 text-[#585D69]" size={20} />
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto mb-4">
+                  {filteredTools.map((tool) => (
+                    <button
+                      key={tool}
+                      onClick={() => setSelectedTool(toolIds[tool])}
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-[#F0F0F4] text-[#020105] font-roboto text-[14px] flex items-center justify-between"
+                    >
+                      {tool}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
               <form>
                 <div className="mb-6">
                   <label className="block text-[#585D69] text-[14px] font-roboto mb-2">
                     Enter your topic or description <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
+                  <div className="relative ">
+                    <textarea
                       type="text"
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
                       placeholder="Potential of becoming a prompt engineer in 2025"
-                      className="w-full px-4 py-3 border border-[#D2D2D2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58FF] focus:border-transparent font-roboto text-[14px]"
+                      className="w-full h-24  px-2 py-2 border border-[#D2D2D2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58FF] focus:border-transparent font-roboto text-[14px]"
                     />
                     <div className="absolute right-3 top-3 flex space-x-2">
                       <button type="button" className="text-[#585D69] hover:text-[#020105]">
@@ -343,18 +369,6 @@ const AlternateLessonPlanDialog = ({ isOpen, onClose }) => {
                       </label>
                     </div>
                   </div>
-                </div>
-                <div className="mb-6">
-                  <label className="block text-[#585D69] text-[14px] font-roboto mb-2">
-                    Additional Notes
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-4 py-3 border border-[#D2D2D2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58FF] font-roboto text-[14px]"
-                    placeholder="e.g., Focus on interactive activities or specific requirements"
-                    rows={3}
-                  />
                 </div>
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">

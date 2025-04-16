@@ -9,9 +9,9 @@ const AlternateCreateDropdown = () => {
 
   // Tools for alternate functionality
   const alternateTools = [
-    { name: 'Module', icon: FileText, action: () => console.log('Advanced Module selected') },
-    { name: 'Presentation', icon: Layout, action: () => console.log('Interactive Presentation selected') },
+    { name: 'Presentation', icon: FileText, action: () => console.log('Presentation selected') },
     { name: 'Document', icon: BookOpen, action: () => setIsLessonPlanOpen(true) },
+    { name: 'WhiteBoard', icon: BookOpen, action: () => console.log('Whiteboard selected') },
   ];
 
   const toggleDropdown = () => {
