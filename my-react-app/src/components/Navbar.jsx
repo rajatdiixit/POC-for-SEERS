@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import CreateDropdown from './CreateDropdown';
+import AlternateCreateDropdown from './AlternateCreateDropdown';
 
 const Navbar = () => {
+  const [isToggled, setIsToggled] = useState(false);
+
+  const handleToggle = () => {
+    setIsToggled(!isToggled);
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-[#D2D2D2] flex items-center justify-between px-6 z-50">
       <div className="flex items-center">
@@ -13,8 +20,23 @@ const Navbar = () => {
       </div>
       
       <div className="flex items-center space-x-4">
-        {/* Create Button with Dropdown */}
-        <CreateDropdown />
+        {/* Conditionally render CreateDropdown or AlternateCreateDropdown */}
+        {isToggled ? <AlternateCreateDropdown /> : <CreateDropdown />}
+        
+        {/* Toggle Switch */}
+        <button
+          onClick={handleToggle}
+          className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-200 ease-in-out ${
+            isToggled ? 'bg-[#0A58FF]' : 'bg-[#D2D2D2]'
+          }`}
+          aria-label={isToggled ? 'Toggle off' : 'Toggle on'}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white transform transition-transform duration-200 ease-in-out ${
+              isToggled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
         
         {/* Notifications */}
         <div className="relative">
